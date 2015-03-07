@@ -35,27 +35,28 @@ Writing multi-line python in pawk:
 Heavily inspired by a source I can't find right now, pawk uses the python_indent function to process strings representing multi-line python. 
 
 examples:
-#colon and semi-colon followed by whitespace cause a line break
+#(semi-colon) or (colon+whitespace) causes a line break
 'import random; print random.random()'
 -->
 import random;
 print random.random()
 
 
-#after lines with a colon successive lines are automatically indented:
+#after lines with (colon+whitespace) successive lines are automatically indented:
 'if i>3: print "hello world!"; a += 1; b = 0'
 -->
 if i>3:
-   print "hello world!"
-   a += 1
+   print "hello world!";
+   a += 1;
    b == 0
 
-#use 'end;' to force indent level to decrease
+
+#use the 'end;' keyword to force indent level to decrease (compare this example with the above)
 'if i>3: print "hello world!"; end; a += 1; b = 0'
 -->
 if i>3:
-   print "hello world!"
-a += 1
+   print "hello world!";
+a += 1;
 b = 0
 
 

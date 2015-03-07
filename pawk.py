@@ -69,7 +69,7 @@ def _python_indent_iter(line_iter):
         #for i in range(10): if i % 2==0: print i; end; end; for i in range(5): print i; end; print 10
         # -->
         #["for i in range(10):", "if i % 2 == 0:", "print i;", "end;", "end;", "for i in range(5):", "print i;", "end;", "print 10"]
-        l2 = [i for i in re.split("(:[ $]|;[ $])",l) if i]
+        l2 = [i for i in re.split("(:[ $]|;)",l) if i]
         py_lines = [''.join([i for i in g if i]).strip() for g in groupby(l2,2)]
 
         for l in py_lines:

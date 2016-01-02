@@ -52,7 +52,7 @@ Examples:
 #-b runs code before any lines are processed
 #-e runs code after all lines are processed
 #To add up a list of floats
-> pawk -b "cnt=0" -p "cnt += float(l)" -e "print cnt"
+> pawk -f input.txt -b "cnt=0" -p "cnt += float(l)" -e "print cnt"
 
 
 

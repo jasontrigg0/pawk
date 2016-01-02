@@ -1,38 +1,65 @@
 pawk is a python-based replacement for awk.
 
-Basic examples:
+It uses python for line-by-line processing of files
 
-#output only columns a,c,b in that order
-pawk.py -f input.txt -c a,c,b
+Examples:
 
-#output only column 1 (zero-indexed)
-pawk.py -f input.txt -c1
+#pawk automatically reads lines as csv rows and stores the result as a list in "r"
+#-g ("grep") keeps a subset of lines satisfying a given condition
 
-#add one to column b
-pawk.py -f input.txt -p 'r["b"] = float(r["b"]) + 1'
+#Selects lines from input.txt with at least 3 csv fields
+> pawk -f input.txt -g 'len(r) > 2'
 
-#create new column max which is the maximum of columns 0 and 1
-pawk.py -f input.txt -a max -p 'r["max"] = max(float(r[0]),float(r[1]))'
 
-#create new column concat
-pawk.py -f input.txt -a concat -p 'r["concat"] = r["a"] + r["b"]'
+#Keep a subset of lines where the second csv field is non-empty
+> pawk -f input.txt -g 'r[1]'
 
-#choose only rows where column 2 is greater than 10
-pawk.py -f input.txt -g 'float(r[2]) > 10'
 
-#choose rows where some column has "day" in it
-pawk.py -f input.txt -g '/day/'
+#The above may crash if some lines have only one csv field
+#Use this instead:
+> pawk -f input.txt -g 'len(r) > 1 and r[1]'
 
-#output only rows after the first 10 (i = 0 is the header, which is automatically outputed)
-pawk.py -f input.txt -g 'i>10'
 
+#The raw line is stored in the "l" variable
+#Keep a subset of lines where l isn't empty and the first character is "a"
+> pawk -f input.txt -g 'l != "" and l[0] == "a"'
+
+
+#Run certain code for each input line using -p
+#Using -p prevents the default printing of the line
+
+#For each line of the input, print that line with whitespace stripped
+> pawk -f input.txt -p 'print l.strip()'
+
+
+#default value of -f is /dev/stdin
+> less input.txt | pawk -p 'print len(r)'
+
+
+#-d sets the input delimiter
+#the output delimiter is ",", so this command converts a tsv to a csv
+> pawk -f input.txt -d '\t'
+
+
+#pawk store the line number (zero-indexed) in the "i" variable
+#only keep lines starting with the 1133rd
+> pawk -f input.txt -g 'i>=1132'
+
+
+#replace a regular expression from each line (python re module imported by default)
+> pawk -f input.txt -p 'print re.sub("U_C_Rate","firearm_rate",l)'
+
+#-b runs code before any lines are processed
+#-e runs code after all lines are processed
+#To add up a list of floats
+> pawk -b "cnt=0" -p "cnt += float(l)" -e "print cnt"
 
 
 
 
 
 Writing multi-line python in pawk:
-Heavily inspired by a source I can't find right now, pawk uses the python_indent function to process strings representing multi-line python. 
+Heavily inspired by a source I can't find right now, pawk can process strings representing multi-line python. 
 
 examples:
 #(semi-colon) or (colon+whitespace) causes a line break

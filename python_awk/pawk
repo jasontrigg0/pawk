@@ -8,10 +8,10 @@ import itertools
 def readCL():
     parser = argparse.ArgumentParser()
     parser.add_argument("-f","--infile")
-    parser.add_argument("-b","--begin_code")
+    parser.add_argument("-b","--begin_code",nargs="*")
     parser.add_argument("-g","--grep_code")
     parser.add_argument("-p","--process_code", nargs="*", default="")
-    parser.add_argument("-e","--end_code")
+    parser.add_argument("-e","--end_code", nargs="*")
     parser.add_argument("-d","--delimiter", default=",")
     parser.add_argument("--exceptions_allowed", action="store_true")
     parser.add_argument("--set", help="load a file with no header, storing each line as an element of a set")
@@ -209,13 +209,13 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
         s = set(l.strip() for l in open(load_set))
 
     if begin_code:
-        begin_code = [compile(c,'','exec') for c in begin_code]
+        begin_code = [compile(code,'','exec') for code in begin_code]
     if grep_code:
         grep_code = compile(grep_code,'','eval')
     if process_code:
-        process_code = [compile(c,'','exec') for c in process_code]
+        process_code = [compile(code,'','exec') for code in process_code]
     if end_code:
-        end_code = [compile(c,'','exec') for c in end_code]
+        end_code = [compile(code,'','exec') for code in end_code]
     if begin_code:
         for code in begin_code:
             exec(code)

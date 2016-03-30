@@ -139,7 +139,7 @@ def process_cut_csv(i,delim=","):
 
 def process_cut_list(l, delim=","):
     for i in l:
-        if "-" in i:
+        if "-" in i and str_is_int(i.split("-")[0]) and str_is_int(i.split("-")[1]):
             x,y = i.split('-')
             for r in range(int(x),int(y)+1):
                 yield r
@@ -168,18 +168,62 @@ def str_is_float(var):
     except:
         return False
 
-    
-#new csvlist and raw function
+#dict_and_row function to return a tuple with both unprocessed row and csv.reader() output
 def csvlist_and_raw(f_in, delimiter):
-    for line in f_in:
-        line = line.rstrip("\n")
-        yield line, csv.reader([line], delimiter=delimiter).next()
+    #default max field size of ~131k crashes at times
+    csv.field_size_limit(sys.maxsize)
+    for l in f_in:
+        l = l.strip("\r\n")
+        row = csv2row(l, delimiter=delimiter)
+        yield l, row
 
+def threewise(iterable):
+    """s -> (None, s0, s1), (s0, s1, s2), ... (sn-1, sn, None)
+    example:
+    for (last, cur, next) in threewise(l):
+    """
+    a, b, c = itertools.tee(iterable,3)
+    def prepend(val, l):
+        yield val
+        for i in l: yield i
+    def postpend(val, l):
+        for i in l: yield i
+        yield val
+    next(c,None)
+    for _xa, _xb, _xc in itertools.izip(prepend(None,a), b, postpend(None,c)):
+        yield (_xa, _xb, _xc)
 
+def csv2row(csv_string, delimiter=",", quote_char='"'):
+    row = []
+    pieces = csv_string.split(delimiter)
+    current_val = []
+    inquote = False
+    for p in pieces:
+        if p and p[0] == quote_char and not inquote and not current_val:
+            inquote = True
+            current_val.append(p[1:])
+        elif inquote and p[-1] == quote_char:
+            inquote = False
+            current_val.append(p[:-1])
+            row.append(",".join(current_val))
+            current_val = []
+        elif inquote:
+            current_val.append(p)
+        elif not inquote:
+            row.append(p)
+            current_val = []
+    if inquote:
+        row.append(quote_char + current_val[0])
+        row += current_val[1:]
+    return row
 
-
-def write_line(rout):
-    csv.writer(sys.stdout, lineterminator= '\n').writerows([rout])
+def write_line(rout, delimiter = ",", quote_char='"', quoting=True):
+    def add_quotes(r):
+        if delimiter in r:
+            return quote_char + r + quote_char
+        else:
+            return r
+    sys.stdout.write(",".join([add_quotes(r) for r in rout]) + "\n")
 
 def proc_field(f):
     try:

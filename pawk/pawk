@@ -199,13 +199,16 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
     current_val = []
     inquote = False
     for p in pieces:
-        if p and p[0] == quote_char and not inquote and not current_val:
+        if p and not inquote and p[0] == quote_char and p[-1] == quote_char and not p[1:-1].endswith(quote_char) and not current_val: #starts and ends with quote but doesn't end with double quote
+            row.append(p)
+        elif p and not inquote and p[0] == quote_char and not current_val:
             inquote = True
             current_val.append(p[1:])
         elif inquote and p[-1] == quote_char:
             inquote = False
             current_val.append(p[:-1])
-            row.append(",".join(current_val))
+            x = ",".join(current_val).replace('""','"')
+            row.append(x)
             current_val = []
         elif inquote:
             current_val.append(p)
@@ -217,13 +220,20 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
         row += current_val[1:]
     return row
 
-def write_line(rout, delimiter = ",", quote_char='"', quoting=True):
+def row2csv(rout, delimiter = ",", quote_char='"'):
     def add_quotes(r):
         if delimiter in r:
+            r = r.replace('"','""')
             return quote_char + r + quote_char
         else:
             return r
-    sys.stdout.write(",".join([add_quotes(r) for r in rout]) + "\n")
+    return ",".join([add_quotes(r) for r in rout])
+
+def write_line(rout):
+    s = row2csv(rout)
+    sys.stdout.write(s + "\n")
+
+#"[""Rusted hardware and rivets"",""Raw hem detail""]"
 
 def proc_field(f):
     try:
@@ -288,7 +298,22 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
     if end_code:
         for code in end_code:
             exec(code)
-            
+
+
+def test_csv_identity():
+    test_cases = ['a,",",b',
+         '["Rusted hardware and rivets","Raw hem detail"]',
+         '"[""Rusted hardware and rivets"",""Raw hem detail""]"',
+         '"["Rusted hardware and rivets","Raw hem detail"]"',
+         '""""',
+         '"a","b","c"',
+         '"a"b",c,d',
+         '"""'
+         ]
+    for t in test_cases:
+        row = csv2row(t)
+        s = row2csv(row)
+        assert(s == t)
 
 if __name__ == "__main__":
     f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, load_set = readCL()

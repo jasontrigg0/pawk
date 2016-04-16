@@ -199,12 +199,18 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
     current_val = []
     inquote = False
     for p in pieces:
-        if p and not inquote and p[0] == quote_char and p[-1] == quote_char and not p[1:-1].endswith(quote_char) and not current_val: #starts and ends with quote but doesn't end with double quote
+        #starts and ends with single quote -- all other quotes come in pairs
+        re_START_AND_END = '^{quote_char}([^{quote_char}]|{quote_char}{quote_char})*{quote_char}$'.format(**vars())
+
+        #all quotes occur in pairs except for the last one, which occurs at the end of the piece
+        #ends with single quote -- all other quotes come in pairs
+        re_END = '^([^{quote_char}]|{quote_char}{quote_char})*{quote_char}$'.format(**vars())
+        if p and not inquote and re.findall(re_START_AND_END,p) and not current_val:
             row.append(p)
         elif p and not inquote and p[0] == quote_char and not current_val:
             inquote = True
             current_val.append(p[1:])
-        elif inquote and p[-1] == quote_char:
+        elif inquote and re.findall(re_END,p):
             inquote = False
             current_val.append(p[:-1])
             x = ",".join(current_val).replace('""','"')
@@ -216,6 +222,7 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
             row.append(p)
             current_val = []
     if inquote:
+        print "done"
         row.append(quote_char + current_val[0])
         row += current_val[1:]
     return row

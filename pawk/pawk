@@ -222,7 +222,6 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
             row.append(p)
             current_val = []
     if inquote:
-        print "done"
         row.append(quote_char + current_val[0])
         row += current_val[1:]
     return row

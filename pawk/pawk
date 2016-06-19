@@ -4,6 +4,7 @@ import argparse
 import csv
 import re
 import itertools
+import io
 
 def readCL():
     parser = argparse.ArgumentParser()
@@ -13,6 +14,7 @@ def readCL():
     parser.add_argument("-p","--process_code", nargs="*", default="")
     parser.add_argument("-e","--end_code", nargs="*")
     parser.add_argument("-d","--delimiter", default=",")
+    parser.add_argument("-m","--multiline",action="store_true",help="allow the incoming csv to have multiline fields, ie newlines in the middle of fields")
     parser.add_argument("--exceptions_allowed", action="store_true")
     parser.add_argument("--set", help="load a file with no header, storing each line as an element of a set")
 
@@ -31,7 +33,7 @@ def readCL():
     elif args.delimiter == "\\t":
         args.delimiter = '\t'
         
-    return f_in, args.begin_code, args.grep_code, args.process_code, args.end_code, args.exceptions_allowed, args.delimiter, args.set
+    return f_in, args.begin_code, args.grep_code, args.process_code, args.end_code, args.exceptions_allowed, args.delimiter, args.multiline, args.set
 
 
 
@@ -169,13 +171,25 @@ def str_is_float(var):
         return False
 
 #dict_and_row function to return a tuple with both unprocessed row and csv.reader() output
-def csvlist_and_raw(f_in, delimiter):
+def csvlist_and_raw(f_in, delimiter, multiline=False):
     #default max field size of ~131k crashes at times
     csv.field_size_limit(sys.maxsize)
-    for l in f_in:
-        l = l.strip("\r\n")
-        row = csv2row(l, delimiter=delimiter)
-        yield l, row
+    if multiline:
+        f1, f2 = itertools.tee(f_in) #use f1 to return 
+        reader = csv.reader(f_in, delimiter=delimiter)
+        for row in reader:
+            output = io.BytesIO()
+            wr = csv.writer(output, delimiter=delimiter)
+            wr.writerow(row)
+            l = output.getvalue()
+            # print "here"
+            # print l,row
+            yield l,row
+    else:
+        for l in f_in:
+            l = l.strip("\r\n")
+            row = csv2row(l, delimiter=delimiter)
+            yield l, row
 
 def threewise(iterable):
     """s -> (None, s0, s1), (s0, s1, s2), ... (sn-1, sn, None)
@@ -258,7 +272,7 @@ def gen_grep_code(grep_code):
     return grep_code
 
 # @profile
-def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter,load_set):
+def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, multiline, load_set):
     hdr = None
     has_exceptions = False
     has_printed_incomplete_line = False
@@ -281,7 +295,7 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
             exec(code)
 
         
-    for i,(l,_csvlist) in enumerate(csvlist_and_raw(f_in, delimiter = delimiter)):
+    for i,(l,_csvlist) in enumerate(csvlist_and_raw(f_in, delimiter, multiline=multiline)):
         r = _csvlist
         try:
             # print r,process_code
@@ -322,7 +336,7 @@ def test_csv_identity():
         assert(s == t)
 
 if __name__ == "__main__":
-    f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, load_set = readCL()
+    f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, multiline, load_set = readCL()
     #following two lines solve 'Broken pipe' error when piping
     #script output into head
     from signal import signal, SIGPIPE, SIG_DFL
@@ -339,4 +353,4 @@ if __name__ == "__main__":
     #preprocess /.*/ syntax
     grep_code = gen_grep_code(grep_code)
 
-    process(f_in,begin_code,grep_code,process_code,end_code,exceptions_allowed,delimiter,load_set)
+    process(f_in,begin_code,grep_code,process_code,end_code,exceptions_allowed,delimiter,multiline,load_set)

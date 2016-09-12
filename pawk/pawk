@@ -247,7 +247,7 @@ def row2csv(rout, delimiter = ",", quote_char='"'):
             return quote_char + r + quote_char
         else:
             return r
-    return ",".join([add_quotes(r) for r in rout])
+    return ",".join([add_quotes(str(r)) for r in rout])
 
 def write_line(rout):
     s = row2csv(rout)

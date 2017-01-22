@@ -32,7 +32,7 @@ def readCL():
         args.delimiter = '\t'
     elif args.delimiter == "\\t":
         args.delimiter = '\t'
-        
+
     return f_in, args.begin_code, args.grep_code, args.process_code, args.end_code, args.exceptions_allowed, args.delimiter, args.multiline, args.set
 
 
@@ -67,7 +67,7 @@ def _pyindent_iter(line_iter):
 
 def _split(s):
     """
-    read a string representing python code and 
+    read a string representing python code and
     'print "echo; echo;"'
     """
     out_list = []
@@ -95,7 +95,7 @@ def _split(s):
         out_list.append(cur_substring.strip())
     return out_list
 
-        
+
 def _paste_lambdas(match_list):
     """don't want newline after 'lambda x:'
     """
@@ -124,8 +124,8 @@ def _threewise(iterable):
     next(c,None)
     for _xa, _xb, _xc in itertools.izip(prepend(None,a), b, postpend(None,c)):
         yield (_xa, _xb, _xc)
-            
-        
+
+
 #####end pyindent#####
 
 
@@ -175,7 +175,7 @@ def csvlist_and_raw(f_in, delimiter, multiline=False):
     #default max field size of ~131k crashes at times
     csv.field_size_limit(sys.maxsize)
     if multiline:
-        f1, f2 = itertools.tee(f_in) #use f1 to return 
+        f1, f2 = itertools.tee(f_in) #use f1 to return
         reader = csv.reader(f_in, delimiter=delimiter)
         for row in reader:
             output = io.BytesIO()
@@ -208,36 +208,58 @@ def threewise(iterable):
         yield (_xa, _xb, _xc)
 
 def csv2row(csv_string, delimiter=",", quote_char='"'):
+    #take a string representing one line from a csv
+    #parse that line into a list of fields
+    #taking care to properly handle quoting of fields containing the delimiter
+    #and nested quotes
     row = []
+
+    #raw pieces from splitting on the delimiter:
+    #some of the pieces will need to be combined to make the fields
+    #eg: "a,b",c,d
+    #has 4 pieces but only three fields
+    #pieces = ['"a','b"','c','d']
     pieces = csv_string.split(delimiter)
-    current_val = []
+
+    #store the pieces in the field currently being built up
+    current_field = []
     inquote = False
+
     for p in pieces:
         #starts and ends with single quote -- all other quotes come in pairs
+        #@example: "a""b"
+        #@example: """"
+        #@example: ""
         re_START_AND_END = '^{quote_char}([^{quote_char}]|{quote_char}{quote_char})*{quote_char}$'.format(**vars())
 
-        #all quotes occur in pairs except for the last one, which occurs at the end of the piece
         #ends with single quote -- all other quotes come in pairs
+        #@example: abcd"
+        #@example: ""cd"
         re_END = '^([^{quote_char}]|{quote_char}{quote_char})*{quote_char}$'.format(**vars())
-        if p and not inquote and re.findall(re_START_AND_END,p) and not current_val:
+
+        #starts with a single quote -- all other quotes come in pairs
+        #@example: "abcd
+        #@example: "ab""
+        re_START = '^{quote_char}([^{quote_char}]|{quote_char}{quote_char})*$'.format(**vars())
+        if not inquote and re.findall(re_START_AND_END,p):
             row.append(p)
-        elif p and not inquote and p[0] == quote_char and not current_val:
+        elif not inquote and re.findall(re_START,p):
             inquote = True
-            current_val.append(p[1:])
+            current_field.append(p[1:])
         elif inquote and re.findall(re_END,p):
             inquote = False
-            current_val.append(p[:-1])
-            x = ",".join(current_val).replace('""','"')
+            current_field.append(p[:-1])
+            x = ",".join(current_field).replace('""','"')
             row.append(x)
-            current_val = []
+            current_field = []
         elif inquote:
-            current_val.append(p)
+            current_field.append(p)
         elif not inquote:
             row.append(p)
-            current_val = []
+            current_field = []
     if inquote:
-        row.append(quote_char + current_val[0])
-        row += current_val[1:]
+        row.append(quote_char + current_field[0])
+        row += current_field[1:]
     return row
 
 def row2csv(rout, delimiter = ",", quote_char='"'):
@@ -276,7 +298,7 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
     hdr = None
     has_exceptions = False
     has_printed_incomplete_line = False
-    #jtrigg@20160102 try out only writing when there's no -p option 
+    #jtrigg@20160102 try out only writing when there's no -p option
     # do_write = process_code and ("print" in process_code or "write_line" in process_code)
     do_write = process_code
     if load_set:
@@ -294,7 +316,7 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
         for code in begin_code:
             exec(code)
 
-        
+
     for i,(l,_csvlist) in enumerate(csvlist_and_raw(f_in, delimiter, multiline=multiline)):
         r = _csvlist
         try:
@@ -314,7 +336,7 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
                 continue
         if not do_write:
             write_line(r)
-            
+
     if end_code:
         for code in end_code:
             exec(code)
@@ -328,7 +350,8 @@ def test_csv_identity():
          '""""',
          '"a","b","c"',
          '"a"b",c,d',
-         '"""'
+         '"""',
+         '""a,"'
          ]
     for t in test_cases:
         row = csv2row(t)
@@ -352,5 +375,4 @@ if __name__ == "__main__":
         end_code = [pyindent(c) for c in end_code]
     #preprocess /.*/ syntax
     grep_code = gen_grep_code(grep_code)
-
     process(f_in,begin_code,grep_code,process_code,end_code,exceptions_allowed,delimiter,multiline,load_set)

@@ -5,6 +5,7 @@ import csv
 import re
 import itertools
 import io
+from jtutils import is_int, str_is_int, str_is_float, to_days, to_years, rand
 
 def readCL():
     parser = argparse.ArgumentParser()
@@ -129,47 +130,6 @@ def _threewise(iterable):
 #####end pyindent#####
 
 
-
-
-
-def process_cut_csv(i,delim=","):
-    if i:
-        i = i.split(',')
-        return list(process_cut_list(i))
-    else:
-        return None
-
-def process_cut_list(l, delim=","):
-    for i in l:
-        if "-" in i and str_is_int(i.split("-")[0]) and str_is_int(i.split("-")[1]):
-            x,y = i.split('-')
-            for r in range(int(x),int(y)+1):
-                yield r
-        elif str_is_int(i):
-            yield int(i)
-        else:
-            yield i
-
-def str_is_int(var):
-    # if not isinstance(var, str) and np.isnan(var):
-    #     return False
-    if re.findall("^\d+$",var):
-        return True
-    else:
-        return False
-
-def is_int(var):
-    return isinstance( var, ( int, long ) )
-
-def str_is_float(var):
-    try:
-        f = float(var)
-        # if np.isnan(f):
-        #     return False
-        return True
-    except:
-        return False
-
 #dict_and_row function to return a tuple with both unprocessed row and csv.reader() output
 def csvlist_and_raw(f_in, delimiter, multiline=False):
     #default max field size of ~131k crashes at times
@@ -190,22 +150,6 @@ def csvlist_and_raw(f_in, delimiter, multiline=False):
             l = l.strip("\r\n")
             row = csv2row(l, delimiter=delimiter)
             yield l, row
-
-def threewise(iterable):
-    """s -> (None, s0, s1), (s0, s1, s2), ... (sn-1, sn, None)
-    example:
-    for (last, cur, next) in threewise(l):
-    """
-    a, b, c = itertools.tee(iterable,3)
-    def prepend(val, l):
-        yield val
-        for i in l: yield i
-    def postpend(val, l):
-        for i in l: yield i
-        yield val
-    next(c,None)
-    for _xa, _xb, _xc in itertools.izip(prepend(None,a), b, postpend(None,c)):
-        yield (_xa, _xb, _xc)
 
 def csv2row(csv_string, delimiter=",", quote_char='"'):
     #take a string representing one line from a csv

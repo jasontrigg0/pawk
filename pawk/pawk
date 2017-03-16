@@ -5,7 +5,7 @@ import csv
 import re
 import itertools
 import io
-from jtutils import is_int, str_is_int, str_is_float, to_days, to_years, rand, GroupBy
+from jtutils import is_int, str_is_int, str_is_float, to_days, to_years, rand, GroupBy, threewise
 from collections import Counter
 
 def readCL():
@@ -75,7 +75,7 @@ def _split(s):
     out_list = []
     cur_substring = ""
     in_string_type = None
-    for las, cur, nex in _threewise(s):
+    for las, cur, nex in threewise(s):
         cur_substring += cur
         if not in_string_type:
             if cur == '"' or cur == "'":
@@ -101,7 +101,7 @@ def _split(s):
 def _paste_lambdas(match_list):
     """don't want newline after 'lambda x:'
     """
-    for las, cur, nex  in _threewise(match_list):
+    for las, cur, nex  in threewise(match_list):
         #TODO: replace with regex of exactly the characters allowed in python variable names (instead of strictly alphanumeric)?
         regex = "lambda[ 0-9A-Za-z]*:$"
         if las and re.findall(regex,las):
@@ -110,23 +110,6 @@ def _paste_lambdas(match_list):
             yield cur + " " + nex
         else:
             yield cur
-
-def _threewise(iterable):
-    """s -> (None, s0, s1), (s0, s1, s2), ... (sn-1, sn, None)
-    example:
-    for (las, cur, nex) in threewise(l):
-    """
-    a, b, c = itertools.tee(iterable,3)
-    def prepend(val, l):
-        yield val
-        for i in l: yield i
-    def postpend(val, l):
-        for i in l: yield i
-        yield val
-    next(c,None)
-    for _xa, _xb, _xc in itertools.izip(prepend(None,a), b, postpend(None,c)):
-        yield (_xa, _xb, _xc)
-
 
 #####end pyindent#####
 

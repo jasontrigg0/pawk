@@ -16,6 +16,7 @@ def readCL():
     parser.add_argument("-p","--process_code", nargs="*", default="")
     parser.add_argument("-e","--end_code", nargs="*")
     parser.add_argument("-d","--delimiter", default=",")
+    parser.add_argument("--output_delimiter",default=",")
     parser.add_argument("-m","--multiline",action="store_true",help="allow the incoming csv to have multiline fields, ie newlines in the middle of fields")
     parser.add_argument("--exceptions_allowed", action="store_true")
     parser.add_argument("--set", help="load a file with no header, storing each line as an element of a set")
@@ -35,7 +36,7 @@ def readCL():
     elif args.delimiter == "\\t":
         args.delimiter = '\t'
 
-    return f_in, args.begin_code, args.grep_code, args.process_code, args.end_code, args.exceptions_allowed, args.delimiter, args.multiline, args.set
+    return f_in, args.begin_code, args.grep_code, args.process_code, args.end_code, args.exceptions_allowed, args.delimiter, args.output_delimiter, args.multiline, args.set
 
 
 
@@ -197,10 +198,10 @@ def row2csv(rout, delimiter = ",", quote_char='"'):
             return quote_char + r + quote_char
         else:
             return r
-    return ",".join([add_quotes(str(r)) for r in rout])
+    return delimiter.join([add_quotes(str(r)) for r in rout])
 
-def write_line(rout):
-    s = row2csv(rout)
+def write_line(rout, delimiter = ","):
+    s = row2csv(rout, delimiter)
     sys.stdout.write(s + "\n")
 
 #"[""Rusted hardware and rivets"",""Raw hem detail""]"
@@ -222,7 +223,7 @@ def gen_grep_code(grep_code):
     return grep_code
 
 # @profile
-def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, multiline, load_set):
+def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, output_delimiter, multiline, load_set):
     hdr = None
     has_exceptions = False
     has_printed_incomplete_line = False
@@ -263,7 +264,7 @@ def process(f_in, begin_code, grep_code, process_code, end_code, exceptions_allo
                     has_exceptions = True
                 continue
         if not do_write:
-            write_line(r)
+            write_line(r, output_delimiter)
 
     if end_code:
         for code in end_code:
@@ -287,7 +288,7 @@ def test_csv_identity():
         assert(s == t)
 
 if __name__ == "__main__":
-    f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, multiline, load_set = readCL()
+    f_in, begin_code, grep_code, process_code, end_code, exceptions_allowed, delimiter, output_delimiter, multiline, load_set = readCL()
     #following two lines solve 'Broken pipe' error when piping
     #script output into head
     from signal import signal, SIGPIPE, SIG_DFL
@@ -303,4 +304,4 @@ if __name__ == "__main__":
         end_code = [pyindent(c) for c in end_code]
     #preprocess /.*/ syntax
     grep_code = gen_grep_code(grep_code)
-    process(f_in,begin_code,grep_code,process_code,end_code,exceptions_allowed,delimiter,multiline,load_set)
+    process(f_in,begin_code,grep_code,process_code,end_code,exceptions_allowed,delimiter,output_delimiter,multiline,load_set)

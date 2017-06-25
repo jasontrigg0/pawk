@@ -1,4 +1,4 @@
-pawk is a python-based replacement for awk.
+A little change at the top
 
 It uses python for line-by-line processing of files
 
@@ -59,7 +59,7 @@ Examples:
 
 
 Writing multi-line python in pawk:
-Heavily inspired by a source I can't find right now, pawk can process strings representing multi-line python. 
+Heavily inspired by a source I can't find right now, pawk can process strings representing multi-line python.
 
 examples:
 #(semi-colon) or (colon+whitespace) causes a line break

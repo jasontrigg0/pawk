@@ -1,4 +1,4 @@
-A little change at the top
+pawk is a python-based replacement for awk.
 
 It uses python for line-by-line processing of files
 
@@ -63,46 +63,46 @@ Heavily inspired by a source I can't find right now, pawk can process strings re
 
 examples:
 #(semi-colon) or (colon+whitespace) causes a line break
-'import random; print random.random()'
+'import random; print(random.random())'
 -->
 import random;
-print random.random()
+print(random.random())
 
 
 #after lines with (colon+whitespace) successive lines are automatically indented:
-'if i>3: print "hello world!"; a += 1; b = 0'
+'if i>3: print("hello world!"); a += 1; b = 0'
 -->
 if i>3:
-   print "hello world!";
+   print("hello world!");
    a += 1;
    b == 0
 
 
 #use the 'end;' keyword to force indent level to decrease (compare this example with the above)
-'if i>3: print "hello world!"; end; a += 1; b = 0'
+'if i>3: print("hello world!"); end; a += 1; b = 0'
 -->
 if i>3:
-   print "hello world!";
+   print("hello world!");
 a += 1;
 b = 0
 
 
 #"elif:", "else:" and "except:" automatically cause indenting to decrease
-'if i>3: print "a"; elif i>1: print "b"; else: print "c"'
+'if i>3: print("a"); elif i>1: print("b"); else: print("c")'
 -->
 if i>3:
-   print "a";
+   print("a");
 elif i>1:
-   print "b";
+   print("b");
 else:
-   print "c"
+   print("c")
 
 
 #you can define functions!
-'def test123(): print "hello world!" end; test123(); test123(); test123();'
+'def test123(): print("hello world!"); end; test123(); test123(); test123();'
 ->
 def test123():
-    print "hello world!"
+    print("hello world!");
 test123();
 test123();
 test123();

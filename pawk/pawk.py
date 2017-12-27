@@ -23,7 +23,7 @@ def parser():
     return parser
 
 def internal_args():
-    return {"input":None,"script":False}
+    return {"input":None}
 
 #####pyindent code#####
 def pyindent(string):
@@ -207,15 +207,22 @@ def gen_grep_code(grep_code):
             grep_code = 're.findall("{grep_string}",",".join(l))'.format(**vars())
     return grep_code
 
+
+def _check_is_list(cfg, x):
+    if not isinstance(cfg[x],list):
+        raise Exception(str(x) + " must be a list")
+
 # @profile
 def pawk(input_cfg=None):
     cfg = process_cfg(input_cfg, parser(), internal_args())
-    if sys.stdin.isatty() and (cfg["script"] or not cfg["input"]) and not cfg["infile"]:
+    if input_cfg and not cfg["input"] and not cfg["infile"]:
+        raise Exception("Couldn't find input for pawk")
+    if sys.stdin.isatty() and (not cfg["input"]) and (not cfg["infile"]):
         sys.stderr.write("WARNING: pawk using /dev/stdin as default input file (-f) but nothing seems to be piped in..." + "\n")
 
     #for non commandline, capture the sys.stdout
     backup = None
-    if not cfg["script"]: # running as a script
+    if input_cfg: # not running from pawk script
         backup = sys.stdout
         sys.stdout = six.StringIO()
 
@@ -224,8 +231,10 @@ def pawk(input_cfg=None):
     elif not cfg["infile"]:
         f_in = sys.stdin
     else:
-        f_in = open(cfg["infile"])
-
+        if sys.version_info[0] >= 3:
+            f_in = open(cfg["infile"],errors='ignore') #don't crash on invalid unicode
+        else:
+            f_in = open(cfg["infile"])
     if cfg["delimiter"] == "TAB":
         cfg["delimiter"] = '\t'
     elif cfg["delimiter"] == "\\t":
@@ -246,20 +255,25 @@ def pawk(input_cfg=None):
     process_code = None
     end_code = None
     grep_code = None
+
+
     if cfg["begin_code"]:
+        _check_is_list(cfg,"begin_code")
         begin_code = [pyindent(c) for c in cfg["begin_code"]]
         begin_code = [compile(code,'','exec') for code in begin_code]
     if cfg["grep_code"]:
+        if isinstance(cfg["grep_code"],list):
+            raise Exception("grep_code can't be list")
         #preprocess /.*/ syntax
         grep_code = gen_grep_code(cfg["grep_code"])
         grep_code = pyindent(grep_code)
         grep_code = compile(grep_code,'','eval')
     if cfg["process_code"]:
-        if not isinstance(cfg["process_code"],list):
-            raise Exception("process_code must be a list")
+        _check_is_list(cfg,"process_code")
         process_code = [pyindent(c) for c in cfg["process_code"]]
         process_code = [compile(code,'','exec') for code in process_code]
     if cfg["end_code"]:
+        _check_is_list(cfg,"end_code")
         end_code = [pyindent(c) for c in cfg["end_code"]]
         end_code = [compile(code,'','exec') for code in end_code]
     if begin_code:
@@ -275,6 +289,9 @@ def pawk(input_cfg=None):
                 raise
 
     for i,(l,_csvlist) in enumerate(csvlist_and_raw(f_in, cfg["delimiter"], multiline=cfg["multiline"])):
+        # sys.stderr.write(str(i) + "\n")
+        # sys.stderr.write(str(l) + "\n")
+        # raise
         r = _csvlist
         try:
             # print r,process_code
@@ -285,7 +302,7 @@ def pawk(input_cfg=None):
                 except:
                     if backup:
                         sys.stdout = backup
-                        raise
+                    raise
             if process_code:
                 for code in process_code:
                     try:
@@ -315,7 +332,7 @@ def pawk(input_cfg=None):
                     raise
 
     #for sys.stdout
-    if not cfg["script"]: #not running as a script
+    if input_cfg: #not running from the pawk script
         out = sys.stdout.getvalue()
         sys.stdout = backup
         return out

@@ -4,4 +4,4 @@ from jtutils import fix_broken_pipe
 
 if __name__ == "__main__":
     fix_broken_pipe()
-    pawk.pawk({"script":True})
+    pawk.pawk()

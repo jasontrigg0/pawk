@@ -108,13 +108,11 @@ def csvlist_and_raw(f_in, delimiter, multiline=False):
         f1, f2 = itertools.tee(f_in) #use f1 to return
         reader = csv.reader(f_in, delimiter=delimiter)
         for row in reader:
-            output = io.BytesIO()
+            output = six.StringIO()
             wr = csv.writer(output, delimiter=delimiter)
             wr.writerow(row)
-            l = output.getvalue()
-            # print "here"
-            # print l,row
-            yield l,row
+            l = output.getvalue().strip()
+            yield l, row
     else:
         for l in f_in:
             l = l.strip("\r\n")

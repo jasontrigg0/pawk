@@ -119,12 +119,77 @@ def csvlist_and_raw(f_in, delimiter, multiline=False):
             row = csv2row(l, delimiter=delimiter)
             yield l, row
 
+class CSVRow(list):
+    #Store a list of csv fields, along with information about whether
+    #each field should:
+    # - have quotes forcibly added
+    #eg: echo '"a"' | pawk -p 'print(r[0])'
+    #>>> a
+    #eg: echo '"a"' | pawk
+    #>>> "a"
+    # - should prevent quotes from being added
+    #eg echo '"a' | pawk -p 'print(r[0])'
+    #>>> "a
+    #echo '"a' | pawk
+    #>>> "a
+    # - or should have quotes added as a regular csv file would
+    #eg echo '"a' | pawk -p 'r[0]="b,c"; write_line(r)'
+    #>>> "b,c"
+    #this information is stored in self._addquote, which is a list
+    #of True|False|None holding this information for each field
+
+    #extending python's list as here:
+    #https://stackoverflow.com/a/8180577
+    def __init__(self):
+        super()
+        self._addquote = []
+    def __getslice__(self,i,j):
+        return CSVRow(list.__getslice__(self, i, j))
+    def __add__(self,other):
+        return CSVRow(list.__add__(self,other))
+    def __mul__(self,other):
+        return CSVRow(list.__mul__(self,other))
+    def __getitem__(self, item):
+        result = list.__getitem__(self, item)
+        try:
+            return CSVRow(result)
+        except TypeError:
+            return result
+    def __setitem__(self,key,value):
+        self._addquote.__setitem__(key,None)
+        return list.__setitem__(self,key,value)
+    def append(self,value):
+        self._addquote.append(None)
+        return list.append(self,value)
+    def extend(self,L):
+        self._addquote.extend([None]*(len(L)))
+        return list.extend(self,L)
+    def insert(self,i,x):
+        self._addquote.insert(i,None)
+        return list.insert(self,i,x)
+    def remove(self,x):
+        idx = list.index(self,x)
+        self._addquote.pop(idx)
+        return list.remove(self,x)
+    def pop(self,*args):
+        if args:
+            self._addquote.pop(args[0])
+            return list.pop(self,args[0])
+        else:
+            self._addquote.pop()
+            return list.pop(self)
+    def sort(self,cmp=None,key=None,reverse=False):
+        raise Exception("Sorting not implemented for pawk CSVRow")
+    def reverse(self):
+        self._addquote.reverse()
+        return list.reverse(self)
+
 def csv2row(csv_string, delimiter=",", quote_char='"'):
     #take a string representing one line from a csv
     #parse that line into a list of fields
     #taking care to properly handle quoting of fields containing the delimiter
     #and nested quotes
-    row = []
+    row = CSVRow()
 
     #raw pieces from splitting on the delimiter:
     #some of the pieces will need to be combined to make the fields
@@ -154,34 +219,50 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
         #@example: "ab""
         re_START = '^{quote_char}([^{quote_char}]|{quote_char}{quote_char})*$'.format(**vars())
         if not inquote and re.findall(re_START_AND_END,p):
-            row.append(p)
+            #correctly formatted quoted rows
+            row.append(p[1:-1].replace(quote_char+quote_char,quote_char))
+            row._addquote[-1] = True
         elif not inquote and re.findall(re_START,p):
             inquote = True
             current_field.append(p[1:])
         elif inquote and re.findall(re_END,p):
             inquote = False
             current_field.append(p[:-1])
-            x = ",".join(current_field).replace('""','"')
+            x = ",".join(current_field).replace(quote_char+quote_char,quote_char)
             row.append(x)
+            row._addquote[-1] = True
             current_field = []
         elif inquote:
             current_field.append(p)
         elif not inquote:
             row.append(p)
+            row._addquote[-1] = False
             current_field = []
     if inquote:
         row.append(quote_char + current_field[0])
         row += current_field[1:]
+        row._addquote[-len(current_field):] = [False] * len(current_field)
     return row
 
 def row2csv(rout, delimiter = ",", quote_char='"'):
-    def add_quotes(r):
-        if delimiter in r:
-            r = r.replace('"','""')
+    def add_quotes(r,addquote=None):
+        #addquote may be True (must add quotes)
+        #False (must not add quotes -- eg was an invalid input)
+        #or None (add as in a regular csv)
+        if addquote is False:
+            return r
+        elif addquote:
+            r = r.replace(quote_char,quote_char*2)
+            return quote_char + r + quote_char
+        elif delimiter in r or quote_char in r:
+            r = r.replace(quote_char,quote_char*2)
             return quote_char + r + quote_char
         else:
             return r
-    return delimiter.join([add_quotes(str(r)) for r in rout])
+    if isinstance(rout,CSVRow):
+        return delimiter.join([add_quotes(str(r),addquote) for r,addquote in zip(rout,rout._addquote)])
+    else:
+        return delimiter.join([add_quotes(str(r)) for r in rout])
 
 def write_line(rout, delimiter = ","):
     s = row2csv(rout, delimiter)

@@ -141,10 +141,8 @@ class CSVRow(list):
     #extending python's list as here:
     #https://stackoverflow.com/a/8180577
     def __init__(self):
-        super()
+        super(CSVRow, self)
         self._addquote = []
-    def __getslice__(self,i,j):
-        return CSVRow(list.__getslice__(self, i, j))
     def __add__(self,other):
         return CSVRow(list.__add__(self,other))
     def __mul__(self,other):

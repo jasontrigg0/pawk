@@ -120,7 +120,11 @@ def csvlist_and_raw(f_in, delimiter, multiline=False):
             yield l, row
 
 class CSVRow(list):
-    #Store a list of csv fields, along with information about whether
+    #Goal: echo $VAR | pawk
+    #should be a no-op
+
+    #To this end, store a list of csv fields,
+    #along with information about whether
     #each field should:
     # - have quotes forcibly added
     #eg: echo '"a"' | pawk -p 'print(r[0])'
@@ -242,7 +246,9 @@ def csv2row(csv_string, delimiter=",", quote_char='"'):
         row._addquote[-len(current_field):] = [False] * len(current_field)
     return row
 
-def row2csv(rout, delimiter = ",", quote_char='"'):
+def row2csv(rout, delimiter = ",", quote_char='"', preserve_csvrow_input = True):
+    #preserve_csvrow_input used to preserve pawk input if the user didn't do anything to a line
+    #ie piping through pawk should be a no-op by default
     def add_quotes(r,addquote=None):
         #addquote may be True (must add quotes)
         #False (must not add quotes -- eg was an invalid input)
@@ -257,13 +263,13 @@ def row2csv(rout, delimiter = ",", quote_char='"'):
             return quote_char + r + quote_char
         else:
             return r
-    if isinstance(rout,CSVRow):
+    if isinstance(rout,CSVRow) and preserve_csvrow_input:
         return delimiter.join([add_quotes(str(r),addquote) for r,addquote in zip(rout,rout._addquote)])
     else:
         return delimiter.join([add_quotes(str(r)) for r in rout])
 
-def write_line(rout, delimiter = ","):
-    s = row2csv(rout, delimiter)
+def write_line(rout, delimiter = ",", preserve_csvrow_input = False):
+    s = row2csv(rout, delimiter, preserve_csvrow_input = preserve_csvrow_input)
     sys.stdout.write(s + "\n")
 
 #"[""Rusted hardware and rivets"",""Raw hem detail""]"
@@ -397,7 +403,10 @@ def pawk(input_cfg=None):
                     has_exceptions = True
                 continue
         if not do_write:
-            write_line(r, cfg["output_delimiter"])
+            if cfg["output_delimiter"] != cfg["delimiter"]:
+                write_line(r, cfg["output_delimiter"], preserve_csvrow_input = False)
+            else:
+                write_line(r, cfg["output_delimiter"])
 
     if end_code:
         for code in end_code:

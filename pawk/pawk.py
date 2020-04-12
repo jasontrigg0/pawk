@@ -7,6 +7,7 @@ import io
 from jtutils import is_int, str_is_int, str_is_float, to_days, to_years, rand, GroupBy, threewise, process_cfg
 from collections import Counter
 import six
+import codecs
 
 def parser():
     parser = argparse.ArgumentParser()
@@ -312,6 +313,8 @@ def pawk(input_cfg=None):
     if cfg["input"]:
         f_in = six.StringIO(cfg["input"])
     elif not cfg["infile"]:
+        #https://stackoverflow.com/a/4554329
+        sys.stdin = codecs.getreader('utf8')(sys.stdin.detach(), errors='ignore')
         f_in = sys.stdin
     else:
         if sys.version_info[0] >= 3:
